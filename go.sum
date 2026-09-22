@@ -19,6 +19,8 @@ github.com/decred/dcrd/dcrec/edwards/v2 v2.0.3 h1:l/lhv2aJCUignzls81+wvga0TFlyoZ
 github.com/decred/dcrd/dcrec/edwards/v2 v2.0.3/go.mod h1:AKpV6+wZ2MfPRJnTbQ6NPgWrKzbe9RCIlCF/FKzMtM8=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 h1:YLtO71vCjJRCBcrPMtQ9nqBsqpA1m5sE92cU+pd5Mcc=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1/go.mod h1:hyedUtir6IdtD/7lIxGeCxkaw7y45JueMRL4DIyJDKs=
+github.com/fystack/mpcium-sdk v0.0.5 h1:Uf+ySyYAFaMPzH12JouHJ4p+bVe9oz+l0WCyAjKfUhY=
+github.com/fystack/mpcium-sdk v0.0.5/go.mod h1:aXchzJmovcKrlviAzub0r7OQBXtCVlpO+f5ZyB3YtaE=
 github.com/fystack/tss-lib/v3 v3.0.1 h1:0pGxiJZfFMxScNvmrgoTKhbVUVlwhX0a6ihsK8Wo0Is=
 github.com/fystack/tss-lib/v3 v3.0.1/go.mod h1:2YiekCEVQ+XNOq2ECsJDvYeGs1vgK+cfOHJ357XIWIk=
 github.com/go-ole/go-ole v1.3.0 h1:Dt6ye7+vXGIKZ7Xtk4s6/xVdGDQynvom7xCFEdWr6uE=

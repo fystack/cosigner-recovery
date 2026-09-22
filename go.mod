@@ -29,7 +29,7 @@ require (
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
-	github.com/fystack/mpcium-sdk v0.0.0
+	github.com/fystack/mpcium-sdk v0.0.5
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -59,8 +59,6 @@ require (
 )
 
 // replace github.com/wailsapp/wails/v2 v2.16.0 => /Users/viet/go/pkg/mod
-
-replace github.com/fystack/mpcium-sdk => ../mpcium-sdk
 
 replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
 
