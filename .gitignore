@@ -1,0 +1,19 @@
+# build output
+build/bin/
+
+# dependencies
+node_modules/
+frontend/dist/
+
+# test fixtures (contain real shares / keys)
+testdata/
+
+# sensitive material — never commit shares, keys or exported secrets
+*.pem
+*.key
+*.enc
+*.mshare
+*-private-key.txt
+
+# macOS
+.DS_Store
