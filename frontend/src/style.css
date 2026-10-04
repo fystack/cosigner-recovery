@@ -285,3 +285,54 @@ textarea { resize: vertical; min-height: 72px; }
 .toast-success .toast-icon { background: var(--success-soft); color: var(--success); }
 .toast-info .toast-icon { background: var(--accent-soft); color: var(--accent); }
 .toast-error .toast-icon { background: var(--danger-soft); color: var(--danger); }
+
+/* home + sweep */
+.home { flex: 1; display: grid; grid-template-columns: 42% 58%; min-height: 0; }
+.home-brand {
+  background: var(--accent); color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 48px;
+}
+.home-brand-main { display: flex; flex-direction: column; gap: 28px; }
+.home-logo { width: 72px; height: 72px; background: #fff; display: flex; align-items: center; justify-content: center; }
+.home-brand-text { display: flex; flex-direction: column; gap: 12px; }
+.home-title { font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: -0.5px; }
+.home-title span { font-weight: 400; color: #dce6fd; }
+.home-brand-text p { margin: 0; max-width: 320px; font-size: 15px; line-height: 1.6; color: #e6edfe; }
+.home-brand-foot { font-size: 12px; color: #dce6fd; }
+.home-tasks { display: flex; flex-direction: column; justify-content: center; gap: 32px; padding: 56px 64px; overflow-y: auto; }
+.home-tasks h1 { margin: 0 0 8px; font-size: 30px; font-weight: 600; letter-spacing: -0.3px; }
+.home-tasks .sub { margin: 0; font-size: 15px; color: var(--muted); }
+.home-list { display: flex; flex-direction: column; gap: 16px; }
+.home-card {
+  display: flex; align-items: center; gap: 24px; text-align: left; padding: 24px 28px;
+  background: var(--surface); border: 1px solid #dcdde0; cursor: pointer; font: inherit; color: var(--text);
+  transition: border-color 0.15s, background 0.15s;
+}
+.home-card:hover:not(:disabled) { border-color: var(--accent); background: #f7f9ff; }
+.home-card-main { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.home-card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.home-card-title { font-size: 19px; font-weight: 600; }
+.home-card-body { color: var(--muted); font-size: 14px; line-height: 1.6; font-weight: 400; }
+.home-card-arrow { font-size: 22px; color: var(--accent); }
+.home-card-tag {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--success); background: #ecfdf3; border: 1px solid #cbefd8; padding: 3px 8px;
+}
+.home-card-tag.online { color: var(--warn); background: var(--warn-soft); border-color: #fbe3a1; }
+.text-input {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--border); background: var(--surface);
+  font-family: var(--mono); font-size: 12px; color: var(--text); user-select: text;
+}
+.text-input:focus { outline: none; border-color: var(--accent-bright); }
+.sweep-wallets { margin-top: 12px; border-top: 1px solid var(--border-soft); }
+.sweep-wallet {
+  display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-soft);
+  font-size: 12.5px; align-items: baseline;
+}
+.sweep-log {
+  margin-top: 10px; padding: 10px 12px; background: var(--surface-sub); border: 1px solid var(--border-soft);
+  font-family: var(--mono); font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow-y: auto; user-select: text;
+}
+.stacked { margin-top: 14px; }
+.spaced { margin-top: 12px; }
+.share-meta.flush { margin: 0; }
+.share-meta.sub-line { display: block; margin: 2px 0 0; }
