@@ -2,8 +2,6 @@ package recovery
 
 import "encoding/json"
 
-func jsonUnmarshal(data []byte, v any) error { return json.Unmarshal(data, v) }
-
 func (b rsaBundle) walletID() string {
 	if len(b.Shares) > 0 {
 		return b.Shares[0].KeyID

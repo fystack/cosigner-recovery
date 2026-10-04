@@ -45,36 +45,81 @@ func normalizeProtocol(p string) string {
 	}
 }
 
+type shareData struct {
+	shareID *big.Int
+	xi      *big.Int
+	pub     *crypto.ECPoint
+}
+
+// protocolSpec holds what differs between ECDSA and EdDSA when combining shares.
+type protocolSpec struct {
+	name      string
+	curve     elliptic.Curve
+	parse     func(blob []byte) (shareData, error)
+	testSign  func(priv *big.Int, pub *crypto.ECPoint) bool
+	address   func(pub *crypto.ECPoint) string
+	addrLabel string
+	note      string
+}
+
+var protocolSpecs = map[string]protocolSpec{
+	ProtocolECDSA: {
+		name:  ProtocolECDSA,
+		curve: tss.S256(),
+		parse: func(blob []byte) (shareData, error) {
+			var d ecdsaKeygen.LocalPartySaveData
+			if err := json.Unmarshal(blob, &d); err != nil {
+				return shareData{}, errors.New("invalid ECDSA share data")
+			}
+			return shareData{d.ShareID, d.Xi, d.ECDSAPub}, nil
+		},
+		testSign:  func(priv *big.Int, pub *crypto.ECPoint) bool { return testSignECDSA(tss.S256(), priv, pub) },
+		address:   ethereumAddress,
+		addrLabel: "Ethereum / EVM address",
+	},
+	ProtocolEdDSA: {
+		name:  ProtocolEdDSA,
+		curve: tss.Edwards(),
+		parse: func(blob []byte) (shareData, error) {
+			var d eddsaKeygen.LocalPartySaveData
+			if err := json.Unmarshal(blob, &d); err != nil {
+				return shareData{}, errors.New("invalid EdDSA share data")
+			}
+			return shareData{d.ShareID, d.Xi, d.EDDSAPub}, nil
+		},
+		testSign:  testSignEdDSA,
+		address:   solanaAddress,
+		addrLabel: "Solana address",
+		note:      "Reconstructed group scalar, not a 32-byte ed25519 seed.",
+	},
+}
+
 // combine reconstructs a wallet's private key from t+1 decrypted share JSON blobs.
 func combine(protocolName string, shareBlobs [][]byte) (*CombinedKey, error) {
-	switch normalizeProtocol(protocolName) {
-	case ProtocolECDSA:
-		return combineECDSA(shareBlobs)
-	case ProtocolEdDSA:
-		return combineEdDSA(shareBlobs)
-	default:
+	spec, ok := protocolSpecs[normalizeProtocol(protocolName)]
+	if !ok {
 		return nil, errors.New("unsupported protocol: " + protocolName)
 	}
+	return spec.combine(shareBlobs)
 }
 
-func combineECDSA(blobs [][]byte) (*CombinedKey, error) {
-	curve := tss.S256()
-	order := curve.Params().N
+func (p protocolSpec) combine(blobs [][]byte) (*CombinedKey, error) {
+	order := p.curve.Params().N
 	xs := make([]*big.Int, 0, len(blobs))
 	shares := make([]*big.Int, 0, len(blobs))
 	var pub *crypto.ECPoint
 	for _, blob := range blobs {
-		var d ecdsaKeygen.LocalPartySaveData
-		if err := json.Unmarshal(blob, &d); err != nil {
-			return nil, errors.New("invalid ECDSA share data")
+		d, err := p.parse(blob)
+		if err != nil {
+			return nil, err
 		}
-		if d.Xi == nil || d.ShareID == nil {
-			return nil, errors.New("ECDSA share missing Xi/ShareID")
+		if d.xi == nil || d.shareID == nil {
+			return nil, errors.New(p.name + " share missing Xi/ShareID")
 		}
-		xs = append(xs, d.ShareID)
-		shares = append(shares, d.Xi)
-		if d.ECDSAPub != nil {
-			pub = d.ECDSAPub
+		xs = append(xs, d.shareID)
+		shares = append(shares, d.xi)
+		if d.pub != nil {
+			pub = d.pub
 		}
 	}
 	priv, err := lagrange(xs, shares, order)
@@ -83,68 +128,20 @@ func combineECDSA(blobs [][]byte) (*CombinedKey, error) {
 	}
 	defer priv.SetInt64(0)
 
-	buf := make([]byte, 32)
-	priv.FillBytes(buf)
-	res := &CombinedKey{Protocol: ProtocolECDSA, PrivateKeyHex: hex.EncodeToString(buf)}
-
-	if pub != nil {
-		computed := crypto.ScalarBaseMult(curve, priv)
-		res.Verified = computed.X().Cmp(pub.X()) == 0 && computed.Y().Cmp(pub.Y()) == 0
-		res.PublicKeyHex = hex.EncodeToString(elliptic.MarshalCompressed(curve, pub.X(), pub.Y()))
-		res.TestSigned = res.Verified && testSignECDSA(curve, priv, pub)
-		if res.Verified {
-			res.Address = ethereumAddress(pub)
-			res.AddressLabel = "Ethereum / EVM address"
-		} else {
-			return res, errors.New("reconstructed ECDSA key does not match public key")
-		}
+	res := &CombinedKey{Protocol: p.name, PrivateKeyHex: hex.EncodeToString(priv.FillBytes(make([]byte, 32))), Note: p.note}
+	if pub == nil {
+		return res, nil
 	}
-	return res, nil
-}
 
-func combineEdDSA(blobs [][]byte) (*CombinedKey, error) {
-	curve := tss.Edwards()
-	order := curve.Params().N
-	xs := make([]*big.Int, 0, len(blobs))
-	shares := make([]*big.Int, 0, len(blobs))
-	var pub *crypto.ECPoint
-	for _, blob := range blobs {
-		var d eddsaKeygen.LocalPartySaveData
-		if err := json.Unmarshal(blob, &d); err != nil {
-			return nil, errors.New("invalid EdDSA share data")
-		}
-		if d.Xi == nil || d.ShareID == nil {
-			return nil, errors.New("EdDSA share missing Xi/ShareID")
-		}
-		xs = append(xs, d.ShareID)
-		shares = append(shares, d.Xi)
-		if d.EDDSAPub != nil {
-			pub = d.EDDSAPub
-		}
+	computed := crypto.ScalarBaseMult(p.curve, priv)
+	res.Verified = computed.X().Cmp(pub.X()) == 0 && computed.Y().Cmp(pub.Y()) == 0
+	res.PublicKeyHex = hex.EncodeToString(elliptic.MarshalCompressed(p.curve, pub.X(), pub.Y()))
+	if !res.Verified {
+		return res, errors.New("reconstructed " + p.name + " key does not match public key")
 	}
-	priv, err := lagrange(xs, shares, order)
-	if err != nil {
-		return nil, err
-	}
-	defer priv.SetInt64(0)
-
-	buf := make([]byte, 32)
-	priv.FillBytes(buf)
-	res := &CombinedKey{Protocol: ProtocolEdDSA, PrivateKeyHex: hex.EncodeToString(buf)}
-
-	if pub != nil {
-		computed := crypto.ScalarBaseMult(curve, priv)
-		res.Verified = computed.X().Cmp(pub.X()) == 0 && computed.Y().Cmp(pub.Y()) == 0
-		res.PublicKeyHex = hex.EncodeToString(elliptic.MarshalCompressed(curve, pub.X(), pub.Y()))
-		res.TestSigned = res.Verified && testSignEdDSA(priv, pub)
-		res.Note = "Reconstructed group scalar, not a 32-byte ed25519 seed."
-		if res.Verified {
-			res.Address = solanaAddress(pub)
-			res.AddressLabel = "Solana address"
-		} else {
-			return res, errors.New("reconstructed EdDSA key does not match public key")
-		}
-	}
+	res.TestSigned = p.testSign(priv, pub)
+	res.Address = p.address(pub)
+	res.AddressLabel = p.addrLabel
 	return res, nil
 }
 
