@@ -6,6 +6,8 @@ Built with [Wails](https://wails.io) (Go backend + React/TS frontend).
 > ⚠️ Reconstructing a key materializes the full private key and defeats the wallet's
 > threshold security. Run only offline, on an air-gapped machine, for recovery or migration.
 
+![Fystack Recovery home screen](docs/home.webp)
+
 ## Supported share formats
 
 | Format | Extension | Unlock with | Source |
