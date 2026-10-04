@@ -10,7 +10,7 @@ Built with [Wails](https://wails.io) (Go backend + React/TS frontend).
 
 | Format | Extension | Unlock with | Source |
 |---|---|---|---|
-| RSA export bundle | `.enc` | RSA private key (PEM) | `mpcium-sdk` export-share |
+| RSA export bundle | `.enc` | RSA private key (PEM) | Fystack web "Export Share", or `cosigner export-share` on a self-hosted server cosigner |
 | Passphrase share | `.mshare` | 6-word passphrase | `cosigner-mobile` recovery export |
 
 Both decrypt to tss-lib share data, then Lagrange interpolation reconstructs the
@@ -38,6 +38,72 @@ recover-cli [--json] \
 Each `--share` is followed by its secret: `--rsa-key` for `.enc` bundles,
 `--passphrase` for `.mshare` files. Prints ECDSA/EdDSA private keys, derived
 addresses, and verification status. Needs at least 2 shares per protocol.
+
+### HD-MPC wallets (child wallets)
+
+Exporting an HD master from the UI gives two files: the share (`share-*.enc`) and the
+derivation paths (`hd-paths-*.enc`: chain code, master pubkeys, every child path).
+
+```bash
+recover-cli --share share-master.enc --rsa-key priv.pem --share cos.mshare --passphrase "..." \
+  --hd-bundle hd-paths-master.enc --children-out children.csv
+
+# EdDSA (Solana) children can sign directly; batch = [{"wallet_id": "...", "message_hex": "..."}]
+recover-cli ... --hd-bundle hd-paths-master.enc --sign-eddsa batch.json --sign-out sigs.json
+```
+
+**In the desktop app:** on step 1 click "+ Add child wallet list" (the `hd-paths-*.enc` file), then
+"Select RSA private key…" to unlock it, like a share. After recovering, the result screen's
+"Export all child keys…" writes the master and every child key to one file (`.json` for
+`recover-cli`, `.csv` to import elsewhere).
+
+To sign for many EdDSA wallets later, no shares are needed, only the exported JSON:
+
+```bash
+recover-cli --children-in child-keys.json --sign-eddsa batch.json --sign-out sigs.json
+```
+
+To import EVM keys into MetaMask and other wallets, export password-protected keystore (v3) files,
+one per wallet. In the app use "Export keystore files…" on the result screen; in the CLI:
+
+```bash
+echo "a strong password" > pw.txt
+recover-cli --children-in child-keys.json --keystore-dir keystores --keystore-password-file pw.txt
+```
+
+Delete `pw.txt` afterwards. Solana keys cannot be exported this way (see below).
+
+ECDSA child keys are plain secp256k1 keys (importable anywhere). EdDSA child keys are group
+scalars, not ed25519 seeds, so external wallets can't import them — use `--sign-eddsa` instead.
+
+### Solana sweep
+
+In the desktop app, pick "Transfer / sweep (Solana)" on the home screen: load the child keys `.json`,
+enter the destination, scan, review, then "Sign & send" (you must retype the destination) or
+"Sign & save to file…" to broadcast later with `--sol-broadcast`. The same steps are available in the CLI:
+
+Moves every SPL token, then all SOL, from each Solana wallet in the exported child keys to one address.
+Wallets are found on-chain (`getTokenAccountsByOwner` for Token and Token-2022), so no token list is needed.
+Empty token accounts are closed to reclaim rent. Dry run is the default; nothing is sent without `--send`.
+
+```bash
+# One machine that has the keys and network access
+recover-cli --children-in child-keys.json --sol-sweep <destination>            # dry run
+recover-cli --children-in child-keys.json --sol-sweep <destination> --send
+
+# Air-gapped: keys never touch the online machine
+recover-cli --children-in child-keys.json --sol-plan <destination> --plan-out plan.json   # online, keys not needed
+recover-cli --children-in child-keys.json --sol-sign-plan plan.json --signed-out signed.json   # offline
+recover-cli --sol-broadcast signed.json --send                                     # online
+```
+
+For the online planning step you can pass `--sol-addresses addresses.json` (an array of addresses or
+`{wallet_id, address}`) instead of the keys file. The signing step re-checks that every transaction
+only pays the destination, so a tampered plan file is rejected. The blockhash expires about 60-90 seconds
+after planning, so plan and broadcast close together. Use `--rpc` for your own endpoint.
+
+Not covered: compressed NFTs, stake accounts, DeFi positions, priority fees, and Token-2022 mints with
+transfer hooks. Wallets without enough SOL for fees are skipped with a note.
 
 ## Develop
 
