@@ -1,4 +1,4 @@
-import { FYSTACK_LOGO_PATH } from "../../shared/constants";
+import { FYSTACK_BLUE, FYSTACK_LOGO_PATH, FYSTACK_LOGO_VIEWBOX } from "../../shared/constants";
 import type { Mode } from "../../shared/types";
 
 export function Home({ onPick }: { onPick: (m: Mode) => void }) {
@@ -8,8 +8,8 @@ export function Home({ onPick }: { onPick: (m: Mode) => void }) {
         <div />
         <div className="home-brand-main">
           <span className="home-logo">
-            <svg width="34" height="42" viewBox="0 0 17 21" aria-hidden>
-              <path d={FYSTACK_LOGO_PATH} fill="#2563eb" />
+            <svg width="36" height="43.2" viewBox={FYSTACK_LOGO_VIEWBOX} aria-hidden>
+              <path d={FYSTACK_LOGO_PATH} fill={FYSTACK_BLUE} />
             </svg>
           </span>
           <div className="home-brand-text">

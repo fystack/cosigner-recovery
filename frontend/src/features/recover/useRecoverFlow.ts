@@ -11,7 +11,7 @@ import {
   UnlockChildPaths,
 } from "../../../wailsjs/go/app/App";
 import { recovery } from "../../../wailsjs/go/models";
-import { PROTOS, THRESHOLD } from "../../shared/constants";
+import { PROTOS, MIN_SHARES } from "../../shared/constants";
 import type { SetConfirm, Step, ToastFn } from "../../shared/types";
 
 type Deps = {
@@ -42,7 +42,7 @@ export function useRecoverFlow({ toast, setError, setConfirm }: Deps) {
     }
   };
 
-  const unlockedReady = PROTOS.filter((p) => (status?.unlockedCounts?.[p] ?? 0) >= THRESHOLD);
+  const unlockedReady = PROTOS.filter((p) => (status?.unlockedCounts?.[p] ?? 0) >= MIN_SHARES);
   const canRecover = unlockedReady.length > 0 && !status?.walletMismatch;
 
   const addShare = () => attempt(AddShareFile);

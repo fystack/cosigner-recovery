@@ -1,14 +1,15 @@
-import { FYSTACK_LOGO_PATH } from "../shared/constants";
+import { FYSTACK_BLUE, FYSTACK_LOGO_PATH, FYSTACK_LOGO_VIEWBOX } from "../shared/constants";
 
 export function BrandBar({ onHome }: { onHome: () => void }) {
   return (
     <div className="brandbar">
-      <span className="brandmark">
-        <svg width="15" height="18.5" viewBox="0 0 17 21" aria-hidden>
-          <path d={FYSTACK_LOGO_PATH} fill="#fff" />
+      <span className="brandlogo">
+        <svg width="20" height="24" viewBox={FYSTACK_LOGO_VIEWBOX} aria-hidden>
+          <path d={FYSTACK_LOGO_PATH} fill={FYSTACK_BLUE} />
         </svg>
+        Fystack
       </span>
-      <span className="brandname">Fystack <span className="brandsub">Recovery</span></span>
+      <span className="brandsub">Recovery</span>
       <div className="spacer" />
       <button className="sm" onClick={onHome}>← Home</button>
     </div>

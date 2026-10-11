@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { UnlockWithPassphrase, UnlockWithRSAKeyFile } from "../../../wailsjs/go/app/App";
 import { recovery } from "../../../wailsjs/go/models";
-import { PROTOS, THRESHOLD } from "../../shared/constants";
+import { PROTOS, MIN_SHARES } from "../../shared/constants";
 
 export function StepShares({ status, onAdd, onRefresh, onRemove, setError, hd, onAddPaths, onUnlockPaths, onRemovePaths }: {
   status: recovery.Status | null;
@@ -20,16 +20,20 @@ export function StepShares({ status, onAdd, onRefresh, onRemove, setError, hd, o
       <h1>Add & unlock shares</h1>
       <p className="sub">
         Add each participant's share file. Supports RSA export bundles (.enc) and passphrase-protected shares (.mshare).
-        You need at least {THRESHOLD} unlocked shares per protocol.
+        Add every share you have — there's no need to enter the threshold. Recovery combines all unlocked shares
+        and checks the result against the wallet's public key, so it only succeeds once enough participants are present.
       </p>
 
       <div className="threshold">
         {PROTOS.map((p) => {
           const c = status?.unlockedCounts?.[p] ?? 0;
+          const total = status?.partyCounts?.[p] ?? 0;
           return (
             <div className="thr-item" key={p}>
-              <div className="thr-label">{p} shares</div>
-              <div className={`thr-count ${c >= THRESHOLD ? "ready" : ""}`}>{c} / {THRESHOLD}</div>
+              <div className="thr-label">{p} shares unlocked</div>
+              <div className={`thr-count ${c >= MIN_SHARES ? "ready" : ""}`}>
+                {c}{total > 0 && <span className="thr-total"> of {total} participants</span>}
+              </div>
             </div>
           );
         })}

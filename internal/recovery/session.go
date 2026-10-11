@@ -40,6 +40,7 @@ type pendingShare struct {
 type unlockedShare struct {
 	participantID string
 	blobs         map[string][]byte
+	parties       map[string]int
 }
 
 func (u *unlockedShare) wipe() {
@@ -139,7 +140,11 @@ func (s *Session) UnlockShare(id, secret string) (ShareInfo, error) {
 		return p.info, err
 	}
 
-	s.unlocked[id] = &unlockedShare{participantID: opened.participantID, blobs: opened.blobs}
+	parties := make(map[string]int, len(opened.blobs))
+	for proto, blob := range opened.blobs {
+		parties[proto] = partyCount(proto, blob)
+	}
+	s.unlocked[id] = &unlockedShare{participantID: opened.participantID, blobs: opened.blobs, parties: parties}
 	p.info.Unlocked = true
 	p.info.WalletID = opened.walletID
 	p.info.ParticipantID = opened.participantID
@@ -194,6 +199,8 @@ type Status struct {
 	WalletID       string         `json:"walletId"`
 	Shares         []ShareInfo    `json:"shares"`
 	UnlockedCounts map[string]int `json:"unlockedCounts"`
+	// PartyCounts is the total number of participants per protocol, as recorded in the shares (0 if unknown).
+	PartyCounts    map[string]int `json:"partyCounts"`
 	WalletMismatch bool           `json:"walletMismatch"`
 }
 
@@ -204,7 +211,7 @@ func (s *Session) Status() Status {
 }
 
 func (s *Session) statusLocked() Status {
-	st := Status{UnlockedCounts: map[string]int{}}
+	st := Status{UnlockedCounts: map[string]int{}, PartyCounts: map[string]int{}}
 	wallets := map[string]bool{}
 	ids := make([]string, 0, len(s.pending))
 	for id := range s.pending {
@@ -221,6 +228,7 @@ func (s *Session) statusLocked() Status {
 			}
 			for proto := range u.blobs {
 				st.UnlockedCounts[proto]++
+				st.PartyCounts[proto] = max(st.PartyCounts[proto], u.parties[proto])
 			}
 		}
 	}
@@ -255,6 +263,9 @@ func (s *Session) Recover() ([]*CombinedKey, error) {
 			return nil, fmt.Errorf("%s: need at least 2 shares, have %d", proto, len(blobs))
 		}
 		key, err := combine(proto, blobs)
+		if errors.Is(err, ErrInsufficientShares) {
+			return nil, fmt.Errorf("%s: %w (have %d) — add more participants' shares", proto, err, len(blobs))
+		}
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", proto, err)
 		}

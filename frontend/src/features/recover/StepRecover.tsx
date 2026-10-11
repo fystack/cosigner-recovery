@@ -19,7 +19,7 @@ export function StepRecover({ status, ready }: { status: recovery.Status | null;
           return (
             <div className="thr-item" key={p}>
               <div className="thr-label">{p}</div>
-              <div className={`thr-count ${ok ? "ready" : ""}`}>{ok ? `${c} shares · ready` : `${c} · not enough`}</div>
+              <div className={`thr-count ${ok ? "ready" : ""}`}>{ok ? `${c} shares` : `${c} · need at least 2`}</div>
             </div>
           );
         })}
