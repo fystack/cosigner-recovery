@@ -60,7 +60,11 @@ func exportSetSession(t *testing.T) *Session {
 }
 
 func TestExportSetRecoversFystackMasterKeys(t *testing.T) {
-	keys, err := exportSetSession(t).Recover()
+	s := exportSetSession(t)
+	if st := s.Status(); st.PartyCounts[ProtocolECDSA] < 2 || st.PartyCounts[ProtocolEdDSA] < 2 {
+		t.Fatalf("want party counts from share data, got %+v", st.PartyCounts)
+	}
+	keys, err := s.Recover()
 	if err != nil {
 		t.Fatal(err)
 	}

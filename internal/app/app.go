@@ -34,6 +34,7 @@ func Run(assets fs.FS) error {
 		MinHeight:        560,
 		AssetServer:      &assetserver.Options{Assets: assets},
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 1},
+		Menu:             app.menu(),
 		OnStartup:        app.startup,
 		Bind:             []interface{}{app},
 	})

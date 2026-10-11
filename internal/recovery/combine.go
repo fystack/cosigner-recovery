@@ -49,6 +49,7 @@ type shareData struct {
 	shareID *big.Int
 	xi      *big.Int
 	pub     *crypto.ECPoint
+	parties int
 }
 
 // protocolSpec holds what differs between ECDSA and EdDSA when combining shares.
@@ -71,7 +72,7 @@ var protocolSpecs = map[string]protocolSpec{
 			if err := json.Unmarshal(blob, &d); err != nil {
 				return shareData{}, errors.New("invalid ECDSA share data")
 			}
-			return shareData{d.ShareID, d.Xi, d.ECDSAPub}, nil
+			return shareData{d.ShareID, d.Xi, d.ECDSAPub, len(d.Ks)}, nil
 		},
 		testSign:  func(priv *big.Int, pub *crypto.ECPoint) bool { return testSignECDSA(tss.S256(), priv, pub) },
 		address:   ethereumAddress,
@@ -85,7 +86,7 @@ var protocolSpecs = map[string]protocolSpec{
 			if err := json.Unmarshal(blob, &d); err != nil {
 				return shareData{}, errors.New("invalid EdDSA share data")
 			}
-			return shareData{d.ShareID, d.Xi, d.EDDSAPub}, nil
+			return shareData{d.ShareID, d.Xi, d.EDDSAPub, len(d.Ks)}, nil
 		},
 		testSign:  testSignEdDSA,
 		address:   solanaAddress,
@@ -94,7 +95,24 @@ var protocolSpecs = map[string]protocolSpec{
 	},
 }
 
-// combine reconstructs a wallet's private key from t+1 decrypted share JSON blobs.
+// ErrInsufficientShares means the shares interpolated to a key that doesn't match the wallet's public key,
+// which happens when fewer than threshold+1 distinct participants were supplied.
+var ErrInsufficientShares = errors.New("not enough shares to reach the signing threshold")
+
+// partyCount returns the total number of participants recorded in a share blob, or 0 if unknown.
+func partyCount(protocolName string, blob []byte) int {
+	spec, ok := protocolSpecs[normalizeProtocol(protocolName)]
+	if !ok {
+		return 0
+	}
+	d, err := spec.parse(blob)
+	if err != nil {
+		return 0
+	}
+	return d.parties
+}
+
+// combine reconstructs a wallet's private key from any number (>= threshold+1) of decrypted share JSON blobs.
 func combine(protocolName string, shareBlobs [][]byte) (*CombinedKey, error) {
 	spec, ok := protocolSpecs[normalizeProtocol(protocolName)]
 	if !ok {
@@ -108,6 +126,7 @@ func (p protocolSpec) combine(blobs [][]byte) (*CombinedKey, error) {
 	xs := make([]*big.Int, 0, len(blobs))
 	shares := make([]*big.Int, 0, len(blobs))
 	var pub *crypto.ECPoint
+	seen := map[string]bool{}
 	for _, blob := range blobs {
 		d, err := p.parse(blob)
 		if err != nil {
@@ -116,6 +135,11 @@ func (p protocolSpec) combine(blobs [][]byte) (*CombinedKey, error) {
 		if d.xi == nil || d.shareID == nil {
 			return nil, errors.New(p.name + " share missing Xi/ShareID")
 		}
+		// The same participant's share may arrive via several files (e.g. .enc and .mshare).
+		if seen[d.shareID.String()] {
+			continue
+		}
+		seen[d.shareID.String()] = true
 		xs = append(xs, d.shareID)
 		shares = append(shares, d.xi)
 		if d.pub != nil {
@@ -137,7 +161,7 @@ func (p protocolSpec) combine(blobs [][]byte) (*CombinedKey, error) {
 	res.Verified = computed.X().Cmp(pub.X()) == 0 && computed.Y().Cmp(pub.Y()) == 0
 	res.PublicKeyHex = hex.EncodeToString(elliptic.MarshalCompressed(p.curve, pub.X(), pub.Y()))
 	if !res.Verified {
-		return res, errors.New("reconstructed " + p.name + " key does not match public key")
+		return res, ErrInsufficientShares
 	}
 	res.TestSigned = p.testSign(priv, pub)
 	res.Address = p.address(pub)

@@ -196,6 +196,7 @@ export namespace recovery {
 	    walletId: string;
 	    shares: ShareInfo[];
 	    unlockedCounts: Record<string, number>;
+	    partyCounts: Record<string, number>;
 	    walletMismatch: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -207,6 +208,7 @@ export namespace recovery {
 	        this.walletId = source["walletId"];
 	        this.shares = this.convertValues(source["shares"], ShareInfo);
 	        this.unlockedCounts = source["unlockedCounts"];
+	        this.partyCounts = source["partyCounts"];
 	        this.walletMismatch = source["walletMismatch"];
 	    }
 	

@@ -7,12 +7,14 @@ import { Toast, useToast } from "./components/Toast";
 import { Home } from "./features/home/Home";
 import { RecoverFlow } from "./features/recover/RecoverFlow";
 import { SweepFlow } from "./features/sweep/SweepFlow";
+import { useZoom } from "./shared/useZoom";
 import type { ConfirmRequest, Mode } from "./shared/types";
 
 export default function App() {
   const [mode, setMode] = useState<Mode>("home");
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const toast = useToast();
+  useZoom((percent) => toast.show(`Zoom ${percent}%`, "info"));
 
   const showError = (m: string) => {
     const msg = String(m).replace(/^Error:\s*/i, "").trim();
