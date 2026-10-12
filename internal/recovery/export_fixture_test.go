@@ -8,14 +8,6 @@ import (
 	"testing"
 )
 
-// Fixtures in testdata/export-test come from a real Fystack export (two shares of one wallet,
-// its HD path list, and the child keys and keystores Fystack produced), so they act as an
-// independent oracle. testdata/ws2 holds a single share of another wallet.
-const (
-	exportDir = "export-test"
-	ws2Dir    = "ws2"
-)
-
 func fixture(t *testing.T, dir, name string) []byte {
 	t.Helper()
 	return read(t, filepath.Join(dir, name))
@@ -73,7 +65,7 @@ func TestExportSetRecoversFystackMasterKeys(t *testing.T) {
 		t.Fatalf("want ECDSA and EdDSA keys, got %d", len(keys))
 	}
 	for _, k := range keys {
-		expected, ok := findChild(want, "662f43f9-e057-4078-bc44-f8da6104590b", k.Protocol)
+		expected, ok := findChild(want, fx.export.id, k.Protocol)
 		if !ok {
 			t.Fatalf("no expected %s master", k.Protocol)
 		}
@@ -81,7 +73,7 @@ func TestExportSetRecoversFystackMasterKeys(t *testing.T) {
 			t.Errorf("%s: not verified/test-signed", k.Protocol)
 		}
 		if k.PrivateKeyHex != expected.PrivateKeyHex || k.Address != expected.Address {
-			t.Errorf("%s master differs from Fystack's export: got %s", k.Protocol, k.Address)
+			t.Errorf("%s master differs from the reference: got %s", k.Protocol, k.Address)
 		}
 	}
 }
@@ -113,7 +105,7 @@ func TestExportSetDerivesFystackChildKeys(t *testing.T) {
 		}
 		if g.Name != w.Name || g.PrivateKeyHex != w.PrivateKeyHex || g.Address != w.Address ||
 			len(g.DerivationPath) != len(w.DerivationPath) {
-			t.Errorf("%s %s differs from Fystack's export: got %s want %s", g.Name, g.Protocol, g.Address, w.Address)
+			t.Errorf("%s %s differs from the reference: got %s want %s", g.Name, g.Protocol, g.Address, w.Address)
 		}
 	}
 }
@@ -138,7 +130,7 @@ func TestExportSetKeystoresMatchFystackAddresses(t *testing.T) {
 		t.Fatalf("want 3 keystores, got %d (%v)", n, err)
 	}
 	written := keystoreAddresses(t, dir)
-	expected := keystoreAddresses(t, filepath.Join("testdata", exportDir))
+	expected := keystoreAddresses(t, filepath.Join(fixtureDir, exportDir))
 	if len(expected) != 3 {
 		t.Fatalf("fixture should hold 3 keystores, got %d", len(expected))
 	}
@@ -175,7 +167,7 @@ func keystoreAddresses(t *testing.T, dir string) map[string]bool {
 func TestSingleShareCannotRecover(t *testing.T) {
 	s := NewSession()
 	info := addAndUnlockRSA(t, s, ws2Dir, "share-cosigner.enc")
-	if info.WalletID != "242795f1-16de-49ee-9af6-d69baf1d8437" || info.ParticipantID != "cos-ee95d822" {
+	if info.WalletID != fx.ws2.id || info.ParticipantID != ws2Participant {
 		t.Fatalf("unexpected share info %+v", info)
 	}
 	if st := s.Status(); st.UnlockedCounts[ProtocolECDSA] != 1 || st.UnlockedCounts[ProtocolEdDSA] != 1 {
@@ -239,7 +231,7 @@ func TestChildListNeedsItsOwnRSAKey(t *testing.T) {
 }
 
 func TestWallet2ChildKeysFileIsSweepable(t *testing.T) {
-	keys, err := ReadChildKeys(filepath.Join("testdata", ws2Dir, "child-keys-hd.json"))
+	keys, err := ReadChildKeys(filepath.Join(fixtureDir, ws2Dir, "child-keys-hd.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

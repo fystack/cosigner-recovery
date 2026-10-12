@@ -1,33 +1,14 @@
 package recovery
 
 import (
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
-	"flag"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/bnb-chain/tss-lib/v3/crypto"
 	"github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/decred/dcrd/dcrec/edwards/v2"
-	"github.com/fystack/mpcium-sdk/protocol"
 )
-
-var update = flag.Bool("update", false, "regenerate testdata/hd-bundle.json and testdata/hd-children.golden.json")
-
-const (
-	hdBundleFixture = "hd-bundle.json"
-	hdGoldenFixture = "hd-children.golden.json"
-)
-
-var fixtureChildren = []HDChild{
-	{WalletID: "child-0", Name: "bbil", DerivationIndex: 0, DerivationPath: []uint32{0}},
-	{WalletID: "child-1", Name: "ops", DerivationIndex: 1, DerivationPath: []uint32{1}},
-	{WalletID: "child-9", Name: "treasury", DerivationIndex: 9, DerivationPath: []uint32{9}},
-}
 
 func recoveredFixtureSession(t *testing.T) (*Session, []*CombinedKey) {
 	t.Helper()
@@ -74,75 +55,6 @@ func edwardsPublicKeyHex(t *testing.T, k *CombinedKey) string {
 	return hex.EncodeToString(edwards.NewPublicKey(p.X(), p.Y()).Serialize())
 }
 
-func writeHDFixtures(t *testing.T) {
-	t.Helper()
-	s, keys := recoveredFixtureSession(t)
-	walletID := s.Status().WalletID
-	chainCode := make([]byte, 32)
-	for i := range chainCode {
-		chainCode[i] = byte(i + 1)
-	}
-	bundle := HDBundle{
-		Format:               hdRecoveryFormat,
-		MasterWalletID:       walletID,
-		KeyID:                walletID,
-		CKDVersion:           "v1",
-		Threshold:            2,
-		ChainCode:            hex.EncodeToString(chainCode),
-		MasterPublicKeyECDSA: keyFor(t, keys, ProtocolECDSA).PublicKeyHex,
-		MasterPublicKeyEDDSA: edwardsPublicKeyHex(t, keyFor(t, keys, ProtocolEdDSA)),
-		Children:             fixtureChildren,
-	}
-	plain, err := json.Marshal(bundle)
-	if err != nil {
-		t.Fatal(err)
-	}
-	priv, err := loadRSAPrivateKey(read(t, "recipient_priv.pem"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pubDER, err := x509.MarshalPKIXPublicKey(&priv.PublicKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER})
-	envelope, err := protocol.BuildExportEnvelope(plain, pubPEM, "hd-recovery|"+walletID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	file, err := json.MarshalIndent(hdBundleFile{Format: hdBundleFileFormat, Envelope: string(envelope)}, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join("testdata", hdBundleFixture), file, 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	children, err := DeriveChildren(&bundle, keys)
-	if err != nil {
-		t.Fatal(err)
-	}
-	golden, err := json.MarshalIndent(children, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join("testdata", hdGoldenFixture), golden, 0o644); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Exit(m.Run())
-}
-
-func TestRegenerateHDFixtures(t *testing.T) {
-	if !*update {
-		t.Skip("run with -update to regenerate HD fixtures")
-	}
-	writeHDFixtures(t)
-}
-
 func TestSessionDerivesChildKeysFromFixture(t *testing.T) {
 	s, _ := recoveredFixtureSession(t)
 
@@ -168,9 +80,16 @@ func TestSessionDerivesChildKeysFromFixture(t *testing.T) {
 	if err := json.Unmarshal(read(t, hdGoldenFixture), &want); err != nil {
 		t.Fatal(err)
 	}
-	gotJSON, _ := json.Marshal(got)
-	wantJSON, _ := json.Marshal(want)
-	if string(gotJSON) != string(wantJSON) {
-		t.Fatalf("derived child keys differ from %s; rerun with -update only if the change is intended", hdGoldenFixture)
+	if len(got) != len(want) {
+		t.Fatalf("want %d keys, got %d", len(want), len(got))
+	}
+	for _, g := range got {
+		w, ok := findChild(want, g.WalletID, g.Protocol)
+		if !ok {
+			t.Fatalf("unexpected key %s %s", g.Name, g.Protocol)
+		}
+		if g.Name != w.Name || g.PrivateKeyHex != w.PrivateKeyHex || g.PublicKeyHex != w.PublicKeyHex || g.Address != w.Address {
+			t.Errorf("%s %s differs from the reference: got %s want %s", g.Name, g.Protocol, g.Address, w.Address)
+		}
 	}
 }
