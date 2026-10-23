@@ -80,6 +80,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # main.go embeds frontend/dist, which is gitignored
+      - run: mkdir -p frontend/dist && touch frontend/dist/.keep
+
       - run: go test ./...
 
       - name: Cross-compile
