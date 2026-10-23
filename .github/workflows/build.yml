@@ -61,14 +61,16 @@ jobs:
         run: |
           mkdir -p dist
           case "${{ runner.os }}" in
-            macOS) ditto -c -k --keepParent build/bin/recovery.app "dist/recovery-${{ matrix.name }}.zip" ;;
-            Windows) cp build/bin/recovery.exe "dist/recovery-${{ matrix.name }}.exe" ;;
-            Linux) tar -czf "dist/recovery-${{ matrix.name }}.tar.gz" -C build/bin recovery ;;
+            macOS) ditto -c -k --keepParent "build/bin/Fystack Recovery.app" "dist/fystack-recovery-${{ matrix.name }}.zip" ;;
+            Windows) cp "build/bin/Fystack Recovery.exe" "dist/fystack-recovery-${{ matrix.name }}.exe" ;;
+            Linux)
+              mv "build/bin/Fystack Recovery" build/bin/fystack-recovery
+              tar -czf "dist/fystack-recovery-${{ matrix.name }}.tar.gz" -C build/bin fystack-recovery ;;
           esac
 
       - uses: actions/upload-artifact@v7
         with:
-          name: recovery-${{ matrix.name }}
+          name: fystack-recovery-${{ matrix.name }}
           path: dist/*
 
   cli:
@@ -92,12 +94,12 @@ jobs:
             os="${target%/*}"; arch="${target#*/}"
             ext=""; [ "$os" = windows ] && ext=".exe"
             CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "-s -w" \
-              -o "dist/recover-cli-${os}-${arch}${ext}" ./cmd/recover-cli
+              -o "dist/fystack-recover-cli-${os}-${arch}${ext}" ./cmd/recover-cli
           done
 
       - uses: actions/upload-artifact@v7
         with:
-          name: recover-cli
+          name: fystack-recover-cli
           path: dist/*
 
   release:
