@@ -1,21 +1,9 @@
 package recovery
 
 import (
-	"os"
-	"path/filepath"
+	"encoding/hex"
 	"testing"
 )
-
-const testPassphrase = "wait-industry-bring-nasty-wonder-cousin"
-
-func read(t *testing.T, name string) []byte {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join("testdata", name))
-	if err != nil {
-		t.Fatalf("read %s: %v", name, err)
-	}
-	return data
-}
 
 func TestRecoverFromMixedFormats(t *testing.T) {
 	s := NewSession()
@@ -71,8 +59,11 @@ func TestRecoverFromMixedFormats(t *testing.T) {
 		if k.Address == "" {
 			t.Fatalf("%s missing address", k.Protocol)
 		}
-		if k.Protocol == ProtocolECDSA && k.Address != "0x902821DDBe31FC933e713d766D3B953d37635644" {
-			t.Fatalf("ECDSA address mismatch: %s", k.Address)
+		if want := fx.mixed.address(k.Protocol); k.Address != want {
+			t.Fatalf("%s address mismatch: got %s want %s", k.Protocol, k.Address, want)
+		}
+		if want := hex.EncodeToString(fx.mixed.secrets[k.Protocol].FillBytes(make([]byte, 32))); k.PrivateKeyHex != want {
+			t.Fatalf("%s recovered a different private key", k.Protocol)
 		}
 	}
 }

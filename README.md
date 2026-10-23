@@ -141,5 +141,5 @@ cross-compile the Windows build; a macOS `.app` must be built on macOS.
 - Have users verify the checksum and disconnect from the network before opening.
 
 Requires Go, Node, and the [Wails CLI](https://wails.io/docs/gettingstarted/installation).
-`mpcium-sdk` is a normal module dependency; `tss-lib` and `agl/ed25519` use
+`tss-lib` and `agl/ed25519` use
 `replace` in `go.mod` to point at the Fystack forks.

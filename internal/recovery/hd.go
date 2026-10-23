@@ -13,8 +13,8 @@ import (
 	"github.com/bnb-chain/tss-lib/v3/crypto"
 	"github.com/bnb-chain/tss-lib/v3/tss"
 	"github.com/decred/dcrd/dcrec/edwards/v2"
-	sdkckd "github.com/fystack/mpcium-sdk/ckd"
-	"github.com/fystack/mpcium-sdk/protocol"
+	"recovery/internal/ckd"
+	"recovery/internal/envelope"
 )
 
 const hdRecoveryFormat = "fystack-hd-recovery-v1"
@@ -74,8 +74,8 @@ func OpenHDBundle(raw []byte, rsaKeyPEM []byte) (*HDBundle, error) {
 	return openHDEnvelope(f.Envelope, priv)
 }
 
-func openHDEnvelope(envelope string, priv *rsa.PrivateKey) (*HDBundle, error) {
-	plain, err := protocol.OpenExportEnvelope([]byte(envelope), priv)
+func openHDEnvelope(sealed string, priv *rsa.PrivateKey) (*HDBundle, error) {
+	plain, err := envelope.Open([]byte(sealed), priv)
 	if err != nil {
 		return nil, errors.New("decrypt HD bundle failed: wrong RSA key or corrupted file")
 	}
@@ -110,7 +110,7 @@ var childSchemes = map[string]childScheme{
 			return hex.DecodeString(master.PublicKeyHex)
 		},
 		derive: func(masterPub []byte, chainCode string, path []uint32) ([]byte, []byte, error) {
-			r, err := sdkckd.DeriveSecp256k1(masterPub, chainCode, path)
+			r, err := ckd.DeriveSecp256k1(masterPub, chainCode, path)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -130,7 +130,7 @@ var childSchemes = map[string]childScheme{
 			return hex.DecodeString(b.MasterPublicKeyEDDSA)
 		},
 		derive: func(masterPub []byte, chainCode string, path []uint32) ([]byte, []byte, error) {
-			r, err := sdkckd.DeriveEd25519(masterPub, chainCode, path)
+			r, err := ckd.DeriveEd25519(masterPub, chainCode, path)
 			if err != nil {
 				return nil, nil, err
 			}

@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/fystack/mpcium-sdk/protocol"
+	"recovery/internal/envelope"
 )
 
 const bundleFormat = "mpcium-export-bundle-v1"
@@ -67,7 +67,7 @@ func openRSABundle(raw []byte, priv *rsa.PrivateKey) (walletID string, participa
 
 	shares = make(map[string][]byte, len(items))
 	for _, it := range items {
-		plain, derr := protocol.OpenExportEnvelope([]byte(it.envelope), priv)
+		plain, derr := envelope.Open([]byte(it.envelope), priv)
 		if derr != nil {
 			return "", "", nil, fmt.Errorf("decrypt %s failed: wrong RSA key or corrupted bundle", normalizeProtocol(it.protocol))
 		}
